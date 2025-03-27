@@ -3,7 +3,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Copy, Share2, Pencil } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Copy, Share2, Pencil, ServerCrash } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import StatusIndicator from "./StatusIndicator";
@@ -14,6 +15,13 @@ interface StreamCardProps {
   streamTitle?: string;
   streamDescription?: string;
   initialStatus?: "live" | "offline" | "ready";
+}
+
+interface RtmpServer {
+  id: string;
+  name: string;
+  url: string;
+  is_active: boolean;
 }
 
 const StreamCard = ({
@@ -28,8 +36,19 @@ const StreamCard = ({
   const [title, setTitle] = useState(streamTitle);
   const [loading, setLoading] = useState(true);
   const [outputFormat, setOutputFormat] = useState<"rtmp" | "hls">("rtmp");
+  const [rtmpServers, setRtmpServers] = useState<RtmpServer[]>([]);
+  const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   
-  const serverAddress = "rtmp://rtmp-stream-master.lovable.app/live";
+  // Default server address if no servers are found in the database
+  const defaultServerAddress = "rtmp://rtmp-stream-master.lovable.app/live";
+  
+  const getServerAddress = () => {
+    if (selectedServerId) {
+      const server = rtmpServers.find(s => s.id === selectedServerId);
+      return server?.url || defaultServerAddress;
+    }
+    return defaultServerAddress;
+  };
 
   useEffect(() => {
     const fetchStreamSettings = async () => {
@@ -50,14 +69,28 @@ const StreamCard = ({
           if (error.code !== "PGRST116") {
             console.error("Error fetching stream settings:", error);
           }
-          setLoading(false);
-          return;
-        }
-        
-        if (data) {
+        } else if (data) {
           setStreamKey(data.stream_key);
           setCustomUrl(data.custom_url || "");
           setStatus(data.stream_key ? "ready" : "offline");
+        }
+        
+        // Fetch RTMP servers
+        const { data: serversData, error: serversError } = await supabase
+          .from("rtmp_servers")
+          .select("*")
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+          
+        if (serversError) {
+          console.error("Error fetching RTMP servers:", serversError);
+        } else {
+          setRtmpServers(serversData || []);
+          
+          // Select the first server by default if available
+          if (serversData && serversData.length > 0) {
+            setSelectedServerId(serversData[0].id);
+          }
         }
       } catch (error) {
         console.error("Error:", error);
@@ -178,27 +211,82 @@ const StreamCard = ({
       <CardContent className="space-y-6">
         <div className="stream-setup space-y-4">
           <div className="server-settings">
-            <h3 className="text-sm font-medium mb-2">RTMP Server URL</h3>
-            <div className="flex">
-              <Input 
-                readOnly
-                value={serverAddress}
-                className="font-mono text-sm bg-secondary"
-              />
-              <Button
-                variant="outline"
-                size="icon"
-                className="ml-2 h-10 w-10"
-                onClick={() => {
-                  navigator.clipboard.writeText(serverAddress);
-                  toast("Server URL copied", {
-                    description: "RTMP server URL copied to clipboard",
-                  });
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium">RTMP Server</h3>
+              {rtmpServers.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs flex items-center gap-1"
+                  onClick={() => navigate("/admin/servers")}
+                >
+                  <ServerCrash className="h-3 w-3" />
+                  Manage Servers
+                </Button>
+              )}
             </div>
+            
+            {rtmpServers.length > 0 ? (
+              <div className="space-y-2">
+                <Select
+                  value={selectedServerId || undefined}
+                  onValueChange={(value) => setSelectedServerId(value)}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select an RTMP server" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rtmpServers.map(server => (
+                      <SelectItem key={server.id} value={server.id}>
+                        {server.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <div className="flex">
+                  <Input 
+                    readOnly
+                    value={getServerAddress()}
+                    className="font-mono text-sm bg-secondary"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="ml-2 h-10 w-10"
+                    onClick={() => {
+                      navigator.clipboard.writeText(getServerAddress());
+                      toast("Server URL copied", {
+                        description: "RTMP server URL copied to clipboard",
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex">
+                <Input 
+                  readOnly
+                  value={defaultServerAddress}
+                  className="font-mono text-sm bg-secondary"
+                />
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="ml-2 h-10 w-10"
+                  onClick={() => {
+                    navigator.clipboard.writeText(defaultServerAddress);
+                    toast("Server URL copied", {
+                      description: "RTMP server URL copied to clipboard",
+                    });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
           
           <StreamKeyGenerator
