@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,8 +27,7 @@ const StreamCard = ({
   const [title, setTitle] = useState(streamTitle);
   const [loading, setLoading] = useState(true);
   
-  // Simulate server address
-  const serverAddress = "rtmp://stream.example.com/live";
+  const serverAddress = "rtmp://rtmp-stream-master.lovable.app/live";
 
   useEffect(() => {
     const fetchStreamSettings = async () => {
@@ -37,7 +35,6 @@ const StreamCard = ({
         const { data: session } = await supabase.auth.getSession();
         
         if (!session.session) {
-          // If not logged in, just use the generated key from the component
           setLoading(false);
           return;
         }
@@ -48,7 +45,7 @@ const StreamCard = ({
           .single();
           
         if (error) {
-          if (error.code !== "PGRST116") { // PGRST116 = No rows returned
+          if (error.code !== "PGRST116") {
             console.error("Error fetching stream settings:", error);
           }
           setLoading(false);
@@ -70,7 +67,6 @@ const StreamCard = ({
     fetchStreamSettings();
   }, []);
 
-  // Generate the streamUrl based on whether customUrl exists
   const getStreamUrl = () => {
     if (!streamKey) return "";
     
@@ -80,7 +76,6 @@ const StreamCard = ({
     return `https://view.example.com/stream/${streamKey}`;
   };
   
-  // For demonstration, update status when stream key changes
   const handleStreamKeyChange = async (key: string) => {
     setStreamKey(key);
     setStatus("ready");
@@ -93,14 +88,12 @@ const StreamCard = ({
         return;
       }
       
-      // Check if settings exist
       const { data } = await supabase
         .from("stream_settings")
         .select("id")
         .single();
         
       if (data) {
-        // Update existing settings
         await supabase
           .from("stream_settings")
           .update({
@@ -109,7 +102,6 @@ const StreamCard = ({
           })
           .eq("id", data.id);
       } else {
-        // Create new settings
         await supabase
           .from("stream_settings")
           .insert({
@@ -137,7 +129,6 @@ const StreamCard = ({
   };
   
   const shareStream = () => {
-    // In a real app, this would open a share dialog or generate shareable links
     toast("Share feature", {
       description: "Sharing functionality would be implemented here.",
     });
@@ -258,7 +249,6 @@ const StreamCard = ({
           </div>
         </div>
         
-        {/* Stream Controls - In a real app, these would connect to the RTMP server */}
         <div className="stream-controls flex gap-2">
           <Button 
             className="flex-1 bg-stream-ready hover:bg-stream-ready/90"
