@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ const StreamCard = ({
   const [status, setStatus] = useState<"live" | "offline" | "ready">(initialStatus);
   const [title, setTitle] = useState(streamTitle);
   const [loading, setLoading] = useState(true);
+  const [outputFormat, setOutputFormat] = useState<"rtmp" | "hls">("rtmp");
   
   const serverAddress = "rtmp://rtmp-stream-master.lovable.app/live";
 
@@ -76,6 +78,15 @@ const StreamCard = ({
     return `https://view.example.com/stream/${streamKey}`;
   };
   
+  const getHlsUrl = () => {
+    if (!streamKey) return "";
+    
+    if (customUrl) {
+      return `https://view.example.com/hls/${customUrl}/index.m3u8`;
+    }
+    return `https://view.example.com/hls/${streamKey}/index.m3u8`;
+  };
+  
   const handleStreamKeyChange = async (key: string) => {
     setStreamKey(key);
     setStatus("ready");
@@ -116,14 +127,14 @@ const StreamCard = ({
   };
   
   const copyStreamUrl = () => {
-    const url = getStreamUrl();
+    const url = outputFormat === "rtmp" ? getStreamUrl() : getHlsUrl();
     if (!url) {
       toast.error("Generate a stream key first");
       return;
     }
     
     navigator.clipboard.writeText(url);
-    toast("Stream URL copied to clipboard", {
+    toast(`${outputFormat.toUpperCase()} URL copied to clipboard`, {
       description: "You can now share this with viewers.",
     });
   };
@@ -198,21 +209,41 @@ const StreamCard = ({
           <div className="output-section">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium">Output / Playback URL</h3>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 gap-1 text-xs"
-                onClick={navigateToSettings}
-              >
-                <Pencil className="h-3 w-3" />
-                Customize URL
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex bg-secondary rounded-md overflow-hidden">
+                  <Button 
+                    variant={outputFormat === "rtmp" ? "secondary" : "ghost"}
+                    size="sm" 
+                    className="h-7 rounded-none font-normal text-xs px-3"
+                    onClick={() => setOutputFormat("rtmp")}
+                  >
+                    RTMP
+                  </Button>
+                  <Button 
+                    variant={outputFormat === "hls" ? "secondary" : "ghost"}
+                    size="sm" 
+                    className="h-7 rounded-none font-normal text-xs px-3"
+                    onClick={() => setOutputFormat("hls")}
+                  >
+                    HLS (m3u8)
+                  </Button>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 gap-1 text-xs"
+                  onClick={navigateToSettings}
+                >
+                  <Pencil className="h-3 w-3" />
+                  Customize URL
+                </Button>
+              </div>
             </div>
             
             <div className="flex">
               <Input
                 readOnly
-                value={streamKey ? getStreamUrl() : "Generate a stream key first"}
+                value={streamKey ? (outputFormat === "rtmp" ? getStreamUrl() : getHlsUrl()) : "Generate a stream key first"}
                 className="font-mono text-sm bg-secondary"
               />
               <div className="flex ml-2 space-x-2">
@@ -244,7 +275,9 @@ const StreamCard = ({
             )}
             
             <p className="text-xs mt-2 text-muted-foreground">
-              Share this URL with your viewers so they can watch your stream.
+              {outputFormat === "rtmp" 
+                ? "Share this RTMP URL with your viewers so they can watch your stream." 
+                : "Share this HLS (m3u8) URL for better streaming compatibility with browsers and mobile devices."}
             </p>
           </div>
         </div>
