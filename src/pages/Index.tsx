@@ -1,8 +1,7 @@
-
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import Header from "@/components/Header";
-import { ArrowRight, Maximize2, Globe, Shield, Zap } from "lucide-react";
+import { ArrowRight, Maximize2, Globe, Shield, Zap, Code, Server, Database } from "lucide-react";
 
 const Index = () => {
   return (
@@ -123,6 +122,65 @@ const Index = () => {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+      
+      {/* New Bottom Section */}
+      <section className="py-16 md:py-24 px-4 bg-secondary/10">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">
+              Developer-Friendly Streaming Infrastructure
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Built for developers, powered by open-source technologies.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                icon: <Code className="w-10 h-10 text-primary" />,
+                title: "Easy Integration",
+                description: "Simple API and SDK support for quick implementation in your projects."
+              },
+              {
+                icon: <Server className="w-10 h-10 text-primary" />,
+                title: "Scalable Infrastructure",
+                description: "Designed to handle high-traffic streaming with minimal configuration."
+              },
+              {
+                icon: <Database className="w-10 h-10 text-primary" />,
+                title: "Robust Logging",
+                description: "Comprehensive stream analytics and performance monitoring."
+              }
+            ].map((feature, index) => (
+              <div 
+                key={index} 
+                className="glass-card p-8 rounded-2xl animate-fade-in" 
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="inline-flex items-center justify-center rounded-full w-16 h-16 bg-primary/10 mb-6">
+                  {feature.icon}
+                </div>
+                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
+                <p className="text-muted-foreground">{feature.description}</p>
+              </div>
+            ))}
+          </div>
+          
+          <div className="text-center mt-16">
+            <Button 
+              asChild 
+              size="lg" 
+              className="rounded-xl shadow-lg hover:shadow-xl transition-all group"
+            >
+              <Link to="/dashboard">
+                Start Building
+                <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </Button>
           </div>
         </div>
       </section>
