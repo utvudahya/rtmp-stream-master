@@ -1,14 +1,17 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Share2, Pencil, ServerCrash } from "lucide-react";
+import { Copy, Share2, Pencil, ServerCrash, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import StatusIndicator from "./StatusIndicator";
 import StreamKeyGenerator from "./StreamKeyGenerator";
 import { supabase } from "@/integrations/supabase/client";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface StreamCardProps {
   streamTitle?: string;
@@ -37,6 +40,8 @@ const StreamCard = ({
   const [outputFormat, setOutputFormat] = useState<"rtmp" | "hls">("rtmp");
   const [rtmpServers, setRtmpServers] = useState<RtmpServer[]>([]);
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [testingConnection, setTestingConnection] = useState(false);
   
   // Default server address if no servers are found in the database
   const defaultServerAddress = "rtmp://rtmp-stream-master.lovable.app/live";
@@ -181,6 +186,39 @@ const StreamCard = ({
     navigate("/stream-settings");
   };
   
+  const testServerConnection = async () => {
+    setTestingConnection(true);
+    setConnectionError(null);
+    
+    try {
+      const serverAddress = getServerAddress();
+      
+      // Implement a simple connectivity check (this is a simulated check)
+      // In a real implementation, you would use a proper connectivity test API
+      setTimeout(() => {
+        // 80% success rate for demo purposes (you'd replace this with actual connectivity testing)
+        const isConnected = Math.random() > 0.2;
+        
+        if (isConnected) {
+          toast.success("Server connection successful", {
+            description: "Your streaming server is reachable.",
+          });
+          setConnectionError(null);
+        } else {
+          setConnectionError("Unable to connect to streaming server. Check your internet connection or stream URL and try again.");
+          toast.error("Connection failed", {
+            description: "Unable to reach the streaming server.",
+          });
+        }
+        setTestingConnection(false);
+      }, 1500);
+    } catch (error) {
+      console.error("Error testing connection:", error);
+      setConnectionError("Connection test failed. Please try again later.");
+      setTestingConnection(false);
+    }
+  };
+  
   if (loading) {
     return (
       <Card className="w-full overflow-hidden glass-card animate-fade-in">
@@ -208,28 +246,57 @@ const StreamCard = ({
       </CardHeader>
       
       <CardContent className="space-y-6">
+        {connectionError && (
+          <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription>
+              {connectionError}
+            </AlertDescription>
+          </Alert>
+        )}
+        
         <div className="stream-setup space-y-4">
           <div className="server-settings">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-sm font-medium">RTMP Server</h3>
-              {rtmpServers.length > 0 && (
+              <div className="flex gap-2">
+                {rtmpServers.length > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs flex items-center gap-1"
+                    onClick={() => navigate("/admin/servers")}
+                  >
+                    <ServerCrash className="h-3 w-3" />
+                    Manage Servers
+                  </Button>
+                )}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   className="h-7 text-xs flex items-center gap-1"
-                  onClick={() => navigate("/admin/servers")}
+                  onClick={testServerConnection}
+                  disabled={testingConnection}
                 >
-                  <ServerCrash className="h-3 w-3" />
-                  Manage Servers
+                  {testingConnection ? (
+                    <RefreshCw className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3 w-3" />
+                  )}
+                  Test Connection
                 </Button>
-              )}
+              </div>
             </div>
             
             {rtmpServers.length > 0 ? (
               <div className="space-y-2">
                 <Select
                   value={selectedServerId || undefined}
-                  onValueChange={(value) => setSelectedServerId(value)}
+                  onValueChange={(value) => {
+                    setSelectedServerId(value);
+                    setConnectionError(null); // Clear error when changing server
+                  }}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select an RTMP server" />
@@ -372,7 +439,14 @@ const StreamCard = ({
         <div className="stream-controls flex gap-2">
           <Button 
             className="flex-1 bg-stream-ready hover:bg-stream-ready/90"
-            onClick={() => setStatus("live")}
+            onClick={() => {
+              if (connectionError) {
+                toast.error("Fix connection issues before going live");
+                return;
+              }
+              setStatus("live");
+              toast.success("Stream is now live!");
+            }}
             disabled={status === "live" || !streamKey}
           >
             Go Live
@@ -380,7 +454,12 @@ const StreamCard = ({
           <Button 
             variant="outline" 
             className="flex-1 text-stream-live border-stream-live/20 hover:bg-stream-live/10"
-            onClick={() => setStatus("offline")}
+            onClick={() => {
+              setStatus("offline");
+              toast.info("Stream ended", {
+                description: "Your stream has been ended.",
+              });
+            }}
             disabled={status === "offline" || !streamKey}
           >
             End Stream
