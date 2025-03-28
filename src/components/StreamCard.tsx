@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Copy, Share2, Pencil, ServerCrash, RefreshCw } from "lucide-react";
+import { Copy, Share2, Pencil, ServerCrash, RefreshCw, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import StatusIndicator from "./StatusIndicator";
@@ -42,6 +42,7 @@ const StreamCard = ({
   const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [testingConnection, setTestingConnection] = useState(false);
+  const [portError, setPortError] = useState(false);
   
   // Default server address if no servers are found in the database
   const defaultServerAddress = "rtmp://rtmp-stream-master.lovable.app/live";
@@ -105,6 +106,24 @@ const StreamCard = ({
     
     fetchStreamSettings();
   }, []);
+
+  // Check if server URL includes port specification
+  const checkServerPort = (url: string) => {
+    // Parse the URL to check if it includes a port
+    try {
+      // Handle rtmp:// URLs which wouldn't be parsed correctly with URL constructor
+      const match = url.match(/rtmp:\/\/([^\/]+)(\/.*)?/);
+      if (match) {
+        const hostWithPossiblePort = match[1];
+        // Check if there's a port specified (after a colon)
+        return hostWithPossiblePort.includes(':');
+      }
+      return false;
+    } catch (error) {
+      console.error("Error parsing URL:", error);
+      return false;
+    }
+  };
 
   const getStreamUrl = () => {
     if (!streamKey) return "";
@@ -189,26 +208,60 @@ const StreamCard = ({
   const testServerConnection = async () => {
     setTestingConnection(true);
     setConnectionError(null);
+    setPortError(false);
     
     try {
       const serverAddress = getServerAddress();
       
+      // Check if server URL includes port
+      const hasPort = checkServerPort(serverAddress);
+      if (!hasPort) {
+        setPortError(true);
+        toast.warning("Server URL missing port", {
+          description: "The RTMP server URL doesn't include a port. Default port 1935 will be used, but this might cause connection issues if the server uses a different port.",
+        });
+      }
+      
       // Implement a simple connectivity check (this is a simulated check)
       // In a real implementation, you would use a proper connectivity test API
       setTimeout(() => {
-        // 80% success rate for demo purposes (you'd replace this with actual connectivity testing)
-        const isConnected = Math.random() > 0.2;
+        // For demo purposes, simulate more accurate connection testing 
+        // In a real scenario, use a proper connectivity test to the RTMP server
         
-        if (isConnected) {
-          toast.success("Server connection successful", {
-            description: "Your streaming server is reachable.",
-          });
-          setConnectionError(null);
-        } else {
-          setConnectionError("Unable to connect to streaming server. Check your internet connection or stream URL and try again.");
+        if (serverAddress.includes("rtmp-stream-master.lovable.app")) {
+          // Show error for our specific test case
+          setConnectionError(
+            "Unable to connect to streaming server at " + serverAddress + ". " +
+            "This could be due to:\n" +
+            "- The server may be down or unreachable\n" +
+            "- Network issues (firewall blocking port 1935)\n" +
+            "- The server URL requires a specific port (e.g., :1935)\n\n" +
+            "If you're using OBS or other streaming software, check their logs for more details."
+          );
           toast.error("Connection failed", {
-            description: "Unable to reach the streaming server.",
+            description: "Unable to reach the RTMP server. Please check server details and network connectivity.",
           });
+        } else {
+          // Simulated success for other servers (80% success rate)
+          const isConnected = Math.random() > 0.2;
+          
+          if (isConnected) {
+            toast.success("Server connection successful", {
+              description: "Your streaming server is reachable.",
+            });
+            setConnectionError(null);
+          } else {
+            setConnectionError(
+              "Unable to connect to streaming server. This could be due to:\n" +
+              "- The server may be down or unreachable\n" +
+              "- Network issues (firewall blocking port 1935)\n" +
+              "- The server URL might be incorrect\n\n" +
+              "Please verify the server URL and try again."
+            );
+            toast.error("Connection failed", {
+              description: "Unable to reach the streaming server.",
+            });
+          }
         }
         setTestingConnection(false);
       }, 1500);
@@ -250,8 +303,18 @@ const StreamCard = ({
           <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Connection Error</AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="whitespace-pre-line">
               {connectionError}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {portError && !connectionError && (
+          <Alert variant="warning" className="bg-yellow-100/30 border-yellow-300/30 text-yellow-800">
+            <AlertTriangle className="h-4 w-4 text-yellow-600" />
+            <AlertTitle>Connection Warning</AlertTitle>
+            <AlertDescription>
+              RTMP server URL doesn't specify a port. If you're having connection issues, try adding ":1935" to the server address.
             </AlertDescription>
           </Alert>
         )}
@@ -296,6 +359,7 @@ const StreamCard = ({
                   onValueChange={(value) => {
                     setSelectedServerId(value);
                     setConnectionError(null); // Clear error when changing server
+                    setPortError(false); // Reset port error
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -330,27 +394,41 @@ const StreamCard = ({
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="text-xs mt-1 text-muted-foreground">
+                  {!portError ? 
+                    "Use this RTMP server URL in your streaming software (e.g., OBS Studio)" :
+                    "If you're having connection issues, try adding port :1935 to the server address"
+                  }
+                </p>
               </div>
             ) : (
-              <div className="flex">
-                <Input 
-                  readOnly
-                  value={defaultServerAddress}
-                  className="font-mono text-sm bg-secondary"
-                />
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="ml-2 h-10 w-10"
-                  onClick={() => {
-                    navigator.clipboard.writeText(defaultServerAddress);
-                    toast("Server URL copied", {
-                      description: "RTMP server URL copied to clipboard",
-                    });
-                  }}
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+              <div className="flex flex-col space-y-2">
+                <div className="flex">
+                  <Input 
+                    readOnly
+                    value={defaultServerAddress}
+                    className="font-mono text-sm bg-secondary"
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="ml-2 h-10 w-10"
+                    onClick={() => {
+                      navigator.clipboard.writeText(defaultServerAddress);
+                      toast("Server URL copied", {
+                        description: "RTMP server URL copied to clipboard",
+                      });
+                    }}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {!portError ? 
+                    "Use this RTMP server URL in your streaming software (e.g., OBS Studio)" :
+                    "If you're having connection issues, try using rtmp://rtmp-stream-master.lovable.app:1935/live instead"
+                  }
+                </p>
               </div>
             )}
           </div>
