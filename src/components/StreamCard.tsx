@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,7 +43,6 @@ const StreamCard = ({
   const [testingConnection, setTestingConnection] = useState(false);
   const [portError, setPortError] = useState(false);
   
-  // Default server address if no servers are found in the database
   const defaultServerAddress = "rtmp://rtmp-stream-master.lovable.app/live";
   
   const getServerAddress = () => {
@@ -80,7 +78,6 @@ const StreamCard = ({
           setStatus(data.stream_key ? "ready" : "offline");
         }
         
-        // Fetch RTMP servers
         const { data: serversData, error: serversError } = await supabase
           .from("rtmp_servers")
           .select("*")
@@ -92,7 +89,6 @@ const StreamCard = ({
         } else {
           setRtmpServers(serversData || []);
           
-          // Select the first server by default if available
           if (serversData && serversData.length > 0) {
             setSelectedServerId(serversData[0].id);
           }
@@ -107,15 +103,11 @@ const StreamCard = ({
     fetchStreamSettings();
   }, []);
 
-  // Check if server URL includes port specification
   const checkServerPort = (url: string) => {
-    // Parse the URL to check if it includes a port
     try {
-      // Handle rtmp:// URLs which wouldn't be parsed correctly with URL constructor
       const match = url.match(/rtmp:\/\/([^\/]+)(\/.*)?/);
       if (match) {
         const hostWithPossiblePort = match[1];
-        // Check if there's a port specified (after a colon)
         return hostWithPossiblePort.includes(':');
       }
       return false;
@@ -213,7 +205,6 @@ const StreamCard = ({
     try {
       const serverAddress = getServerAddress();
       
-      // Check if server URL includes port
       const hasPort = checkServerPort(serverAddress);
       if (!hasPort) {
         setPortError(true);
@@ -222,14 +213,8 @@ const StreamCard = ({
         });
       }
       
-      // Implement a simple connectivity check (this is a simulated check)
-      // In a real implementation, you would use a proper connectivity test API
       setTimeout(() => {
-        // For demo purposes, simulate more accurate connection testing 
-        // In a real scenario, use a proper connectivity test to the RTMP server
-        
         if (serverAddress.includes("rtmp-stream-master.lovable.app")) {
-          // Show error for our specific test case
           setConnectionError(
             "Unable to connect to streaming server at " + serverAddress + ". " +
             "This could be due to:\n" +
@@ -242,7 +227,6 @@ const StreamCard = ({
             description: "Unable to reach the RTMP server. Please check server details and network connectivity.",
           });
         } else {
-          // Simulated success for other servers (80% success rate)
           const isConnected = Math.random() > 0.2;
           
           if (isConnected) {
@@ -310,7 +294,7 @@ const StreamCard = ({
         )}
         
         {portError && !connectionError && (
-          <Alert variant="warning" className="bg-yellow-100/30 border-yellow-300/30 text-yellow-800">
+          <Alert variant="default" className="bg-yellow-100/30 border-yellow-300/30 text-yellow-800">
             <AlertTriangle className="h-4 w-4 text-yellow-600" />
             <AlertTitle>Connection Warning</AlertTitle>
             <AlertDescription>
@@ -358,8 +342,8 @@ const StreamCard = ({
                   value={selectedServerId || undefined}
                   onValueChange={(value) => {
                     setSelectedServerId(value);
-                    setConnectionError(null); // Clear error when changing server
-                    setPortError(false); // Reset port error
+                    setConnectionError(null);
+                    setPortError(false);
                   }}
                 >
                   <SelectTrigger className="w-full">
