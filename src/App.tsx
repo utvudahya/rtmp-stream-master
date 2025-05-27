@@ -4,12 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Dashboard from "./pages/Dashboard";
-import StreamSettings from "./pages/StreamSettings";
-import NotFound from "./pages/NotFound";
-import AdminAuth from "./pages/AdminAuth";
-import AdminRtmpServers from "./pages/AdminRtmpServers";
+import { navItems } from "./nav-items";
+import AdsTxt from "./pages/AdsTxt";
 
 const queryClient = new QueryClient();
 
@@ -20,13 +16,10 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/stream-settings" element={<StreamSettings />} />
-          <Route path="/admin/auth" element={<AdminAuth />} />
-          <Route path="/admin/servers" element={<AdminRtmpServers />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
+          {navItems.map(({ to, page }) => (
+            <Route key={to} path={to} element={page} />
+          ))}
+          <Route path="/ads.txt" element={<AdsTxt />} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
